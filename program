@@ -1,0 +1,222 @@
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <iomanip>
+using namespace std;
+
+class access {
+private:
+    string name, pass, cnic, gender, account_type;
+    int income, amount;
+
+public:
+    access() : name(""), pass(""), cnic(""), gender(""), income(0), amount(0), account_type("") {}
+    ~access() {}
+
+    void signup() {
+        cout << "Enter the following details\nName: ";
+        cin >> name;
+        cout << "\nPassword: ";
+        cin >> pass;
+        cout << "\nCNIC: ";
+        cin >> cnic;
+        cout << "\nSex: ";
+        cin >> gender;
+        cout << "\nMonthly Income: ";
+        cin >> income;
+        cout << "Which account type you want to open \n--Saving Account, Checking Account, Fixed Deposit, Current Account, Foreign Currency Account\n";
+        cin >> account_type;
+
+        ofstream file("data.txt", ios::app); 
+        if (file.is_open()) {
+            file << name << "," << pass << "," << cnic << "," << gender << "," << income << "," << account_type << "," << amount << "\n";
+            file.close();
+            cout << "\nSignup Successful.\n";
+        }
+        else {
+            cout << "\nError opening file for writing.\n";
+        }
+    }
+
+    bool signin() {
+        string inputName, inputPass;
+        cout << "Enter Name: ";
+        cin >> inputName;
+        cout << "Enter Password: ";
+        cin >> inputPass;
+
+        ifstream file("data.txt");
+
+        if (file.is_open()) {
+            string line;
+            while (getline(file, line)) {
+                stringstream ss(line);
+                string fileName, filePass, temp;
+                getline(ss, fileName, ',');
+                getline(ss, filePass, ',');
+
+                if (inputName == fileName && inputPass == filePass) {
+                    
+                    getline(ss, cnic, ',');
+                    getline(ss, gender, ',');
+                    ss >> income;
+                    getline(ss, temp, ',');
+                    getline(ss, account_type, ',');
+                    ss >> amount;
+
+                    name = fileName;
+                    pass = filePass;
+
+                    cout << "Login Successful\n";
+                    file.close();
+                    return true;
+                }
+            }
+            cout << "Login Failed. Name or Password incorrect.\n";
+            file.close();
+        }
+        else {
+            cout << "Error opening file for reading.\n";
+        }
+        return false;
+    }
+    int getAmount() const {
+        return amount;
+    }
+    void updateAmount(int change) {
+        ifstream file("data.txt");
+        ofstream tempFile("temp.txt");
+        string line;
+        bool updated = false;
+
+        if (file.is_open() && tempFile.is_open()) {
+            while (getline(file, line)) {
+                stringstream ss(line);
+                string fileName, filePass;
+                getline(ss, fileName, ',');
+                getline(ss, filePass, ',');
+
+                if (fileName == name && filePass == pass) {
+                    
+                    int newAmount = amount + change;  
+                    tempFile << name << "," << pass << "," << cnic << "," << gender << "," << income << "," << account_type << "," << newAmount << "\n";
+                    amount = newAmount;  
+                    updated = true;
+                }
+                else {
+                
+                    tempFile << line << "\n";
+                }
+            }
+            file.close();
+            tempFile.close();
+            
+            remove("data.txt");
+            rename("temp.txt", "data.txt");
+
+            if (updated) {
+                cout << "Amount updated successfully.\n";
+            }
+            else {
+                cout << "Error updating amount.\n";
+            }
+        }
+        else {
+            cout << "Error opening file.\n";
+        }
+    }
+};
+class balance {
+private:
+    access* user;  
+public:
+    balance(access* user) : user(user) {}
+
+    void deposit() {
+        int n_amount;
+        cout << "Enter the amount to deposit: ";
+        cin >> n_amount;
+        user->updateAmount(n_amount);
+    }
+
+    void withdraw() {
+        int n_amount;
+        cout << "Enter the amount to withdraw: ";
+        cin >> n_amount;
+        if (n_amount > user->getAmount()) {
+            cout << "Insufficient funds.\n";
+        }
+        else {
+            user->updateAmount(-n_amount); 
+        }
+    }
+    void showBalance() const {
+        cout << "Current Balance: " << user->getAmount() << "\n";
+    }
+};
+int main() {
+    access user;
+    int choice;
+
+    while (true) {
+       
+        cout << "\n========================================\n";
+        cout << "              Main Menu\n";
+        cout << "========================================\n";
+        cout << " 1. Signup\n";
+        cout << " 2. Signin\n";
+        cout << " 3. Exit\n";
+        cout << "----------------------------------------\n";
+        cout << "Enter your choice: ";
+        cin >> choice;
+
+        if (choice == 1) {
+            user.signup();
+        }
+        else if (choice == 2) {
+            if (user.signin()) {
+                balance userBalance(&user);
+                int transChoice;
+                while (true) {
+                   
+                    cout << "\n========================================\n";
+                    cout << "           Transaction Menu\n";
+                    cout << "========================================\n";
+                    cout << " 1. Deposit\n";
+                    cout << " 2. Withdraw\n";
+                    cout << " 3. Balance Inquiry\n";
+                    cout << " 4. Logout\n";
+                    cout << "----------------------------------------\n";
+                    cout << "Enter your choice: ";
+                    cin >> transChoice;
+
+                    if (transChoice == 1) {
+                        userBalance.deposit();
+                    }
+                    else if (transChoice == 2) {
+                        userBalance.withdraw();
+                    }
+                    else if (transChoice == 3) {
+                        userBalance.showBalance();
+                    }
+                    else if (transChoice == 4) {
+                        cout << "Logging out...\n";
+                        break;  
+                    }
+                    else {
+                        cout << "Invalid choice. Please try again.\n";
+                    }
+                }
+            }
+        }
+        else if (choice == 3) {
+            cout << "Thank you for using the Banking System. Goodbye!\n";
+            break;  
+        }
+        else {
+            cout << "Invalid choice. Please try again.\n";
+        }
+    }
+
+    return 0;
+}
